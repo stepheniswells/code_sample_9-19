@@ -1,0 +1,90 @@
+//Stephen Wells - 100 line code sample  
+
+ private void move()
+    {  
+        float x = Input.GetAxis("Horizontal");
+        float y = Input.GetAxis("Vertical");
+
+        //if in a group and start moving
+        if (group != null && new Vector2(x, y) != Vector2.zero)
+        {
+            Debug.Log("trying to leave");
+            group.GetComponent<NPCWalkingGroup>().leaveGroup(this.gameObject);
+            group = null;
+        }
+        if (Input.GetKey(KeyCode.LeftShift))
+        {
+            transform.Translate(0, y * sprintSpeed * Time.deltaTime, 0);
+            transform.Translate(x * sprintSpeed * Time.deltaTime, 0, 0);
+            if(new Vector2(x, y) != Vector2.zero)
+            {
+                if (incognitoScore > 0 && hasLOSToTarget) incognitoScore -= 0.3f;
+                if (incognitoScore > 0 && isCloseToTarget) incognitoScore -= 0.3f;
+            }
+        }
+        else
+        {
+            transform.Translate(0, y * speed * Time.deltaTime, 0);
+            transform.Translate(x * speed * Time.deltaTime, 0, 0);
+            if (incognitoScore < 100) incognitoScore += 0.1f;
+            if (incognitoScore < 100 && !hasLOSToTarget) incognitoScore += 0.3f;
+            if (incognitoScore < 100 && group != null) incognitoScore += 0.6f;
+        }
+    }
+
+    private void moveAnimation()
+    {
+        Vector2 vel = (transform.position - lastPosition);
+        lastPosition = transform.position;
+
+        if (vel != Vector2.zero)
+        {
+            animator.SetBool("IsMoving", true);
+            animator.SetFloat("MoveX", vel.x);
+            animator.SetFloat("MoveY", vel.y);
+        }
+        else
+        {
+            animator.SetBool("IsMoving", false);
+        }
+    }
+
+    // ** TARGET FINDING **
+    private void checkPlayerLOS()
+    {
+        Vector2 player = this.transform.position;
+        Vector2 targetVector = target.transform.position;
+
+        RaycastHit2D hitWall = Physics2D.Linecast(targetVector, player, (1 << 9)); //fancy bit solution for layers
+
+        if (hitWall.collider == null) //has LOS to target
+        {
+            Color c = targetFinderInner.color;
+            c.a = 1;
+            targetFinderInner.color = c;
+            hasLOSToTarget = true;
+        }
+        else //no LOS to target
+        {
+            Color c = targetFinderInner.color;
+            c.a = 0.2f;
+            targetFinderInner.color = c;
+            hasLOSToTarget = false;
+        }
+    }
+
+    private void updatePlayerDistance()
+    {
+        Vector2 player = this.transform.position;
+        Vector2 targetVector = target.transform.position;
+        float dist = Vector2.Distance(player, targetVector);
+        if (dist < closeToTargetThreshold)
+        {
+            isCloseToTarget = true;
+        }
+        else
+        {
+            isCloseToTarget = false;
+        }
+        targetFinderInner.transform.localScale = new Vector3(1 - Mathf.InverseLerp(targetFinderCloseThreshold, targetFinderFarThreshold, dist), 1, 1);
+    }
